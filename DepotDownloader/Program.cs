@@ -295,8 +295,15 @@ namespace DepotDownloader
                 {
                     if (depotIdList.Count != manifestIdList.Count)
                     {
-                        Console.WriteLine("Error: -manifest requires one id for every -depot specified");
-                        return 1;
+                        if (depotIdList.Count == 1)
+                        {
+                            depotIdList = Enumerable.Repeat(depotIdList.Single(), manifestIdList.Count).ToList();
+                        }
+                        else
+                        {
+                            Console.WriteLine("Error: -manifest requires one id for every -depot specified");
+                            return 1;
+                        }
                     }
 
                     var zippedDepotManifest = depotIdList.Zip(manifestIdList, (depotId, manifestId) => (depotId, manifestId));
