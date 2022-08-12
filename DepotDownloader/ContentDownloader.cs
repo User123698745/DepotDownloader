@@ -43,7 +43,7 @@ namespace DepotDownloader
             public byte[] DepotKey { get; } = depotKey;
         }
 
-        static bool CreateDirectories(uint depotId, uint depotVersion, out string installDir)
+        static bool CreateDirectories(uint depotId, ulong manifestId, out string installDir)
         {
             installDir = null;
             try
@@ -55,7 +55,7 @@ namespace DepotDownloader
                     var depotPath = Path.Combine(DEFAULT_DOWNLOAD_DIR, depotId.ToString());
                     Directory.CreateDirectory(depotPath);
 
-                    installDir = Path.Combine(depotPath, depotVersion.ToString());
+                    installDir = Path.Combine(depotPath, manifestId.ToString());
                     Directory.CreateDirectory(installDir);
 
                     Directory.CreateDirectory(Path.Combine(installDir, CONFIG_DIR));
@@ -157,27 +157,6 @@ namespace DepotDownloader
             };
             var section_kv = appinfo.Children.Where(c => c.Name == section_key).FirstOrDefault();
             return section_kv;
-        }
-
-        static uint GetSteam3AppBuildNumber(uint appId, string branch)
-        {
-            if (appId == INVALID_APP_ID)
-                return 0;
-
-
-            var depots = GetSteam3AppSection(appId, EAppInfoSection.Depots);
-            var branches = depots["branches"];
-            var node = branches[branch];
-
-            if (node == KeyValue.Invalid)
-                return 0;
-
-            var buildid = node["buildid"];
-
-            if (buildid == KeyValue.Invalid)
-                return 0;
-
-            return uint.Parse(buildid.Value);
         }
 
         static ulong GetSteam3DepotManifest(uint depotId, uint appId, string branch)
@@ -508,7 +487,7 @@ namespace DepotDownloader
                     throw new ContentDownloaderException(string.Format("Couldn't find any depots to download for app {0}", appId));
                 }
 
-                if (depotIdsFound.Count < depotIdsExpected.Count)
+                if (!depotIdsFound.OrderBy(id => id).SequenceEqual(depotIdsExpected.OrderBy(id => id).Distinct()))
                 {
                     var remainingDepotIds = depotIdsExpected.Except(depotIdsFound);
                     throw new ContentDownloaderException(string.Format("Depot {0} not listed for app {1}", string.Join(", ", remainingDepotIds), appId));
@@ -573,9 +552,7 @@ namespace DepotDownloader
                 return null;
             }
 
-            var uVersion = GetSteam3AppBuildNumber(appId, branch);
-
-            if (!CreateDirectories(depotId, uVersion, out var installDir))
+            if (!CreateDirectories(depotId, manifestId, out var installDir))
             {
                 Console.WriteLine("Error: Unable to create install directories!");
                 return null;
